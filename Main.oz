@@ -15,17 +15,19 @@ define
    SendItemsPosList % Send a list of item to the given port with the given msg
 
    MovePlayer % Move ONE player by sending msg to player port then to window port
+   
+   RandomMerge % Merge and order at random the two given list
+   MovePlayers % Move ALL players ONCE
 
    Initialisation
+   TurnByTurn
    
-   PacmansSpawns
-   GhostsSpawns
-   PointsSpawns
-   BonusSpawns
+   PacmansSpawns GhostsSpawns
+   PointsSpawns BonusSpawns
    
    WindowPort
    PacmansPorts GhostsPorts
-   PacmansMapping GhostsMapping % List with: port#<spawn>
+   PacmansMapping GhostsMapping % List with: port#<position>
 in
    % Send a list of item to the given port with the given msg
    proc{SendItemsPosList Port ItemsList Msg}
@@ -134,14 +136,52 @@ in
       end
    end
 
-   % Move the player by sending msg to player port then to window port
-   proc{MovePlayer WindowPort PlayerPort Msg}
-      local ID P in
-	 {Send PlayerPort move(ID P)} {Wait ID} {Wait P}
-	 {Send WindowPort Msg(ID P)}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+   % Order at random the two given list
+   fun{RandomMerge L1 L2}
+      case L1#L2
+      of nil#nil then nil
+      [] nil#(H|T) then H|{RandomMerge nil T}
+      [] (H|T)#nil then H|{RandomMerge T nil}
+      [] (H1|T1)#(H2|T2) then
+	 if ({OS.rand} mod 2)==0 then H1|{RandomMerge T1 L2}
+	 else H2|{RandomMerge L1 T2}
+	 end
       end
    end
    
+   % Move the player by sending msg to player port then to window port
+   proc{MovePlayer WindowPort Ports PlayerPort}
+      ID P
+      proc{SendAll Ports Type Msg}
+	 case Ports
+	 of nil then skip
+	 [] Port|T then ID in
+	    {Send Port getId(ID)}
+	    if {Record.label ID}==Type then {Send Port Msg} {SendAll T Type Msg}
+	    else {SendAll T Type Msg}
+	    end
+	 end
+      end
+   in
+      {Send PlayerPort move(ID P)} {Wait ID} {Wait P}
+      case {Record.label ID}
+      of pacman then {SendAll Ports ghost pacmanPos(ID P)} {Send WindowPort movePacman(ID P)}
+      [] ghost then {SendAll Ports pacman ghostPos(ID P)} {Send WindowPort moveGhost(ID P)}
+      end
+   end
+   
+   % Move ALL players ONCE
+   proc{MovePlayers WindowPort Ports}
+      case Ports
+      of nil then skip
+      [] PlayerPort|T then {MovePlayer WindowPort Ports PlayerPort} {MovePlayers WindowPort T}
+      end
+   end
+ 
    
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
    
@@ -195,8 +235,19 @@ in
 	 end
       end
    end
+
+   proc{TurnByTurn WindowPort Ports Round PacmansAlive}
+      if Round==30 then skip
+      else
+	 {MovePlayers WindowPort Ports}
+	 {Delay 1000}{TurnByTurn WindowPort Ports Round+1 PacmansAlive}
+      end
+   end
+
    
    thread
       {Initialisation}
+      {Delay 10000}
+      {TurnByTurn WindowPort {RandomMerge PacmansPorts GhostsPorts} 1 Input.nbPacman}
    end
 end
