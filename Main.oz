@@ -3,7 +3,6 @@ import
    GUI
    Input
    PlayerManager
-   Browser
    OS
 define
    CreatePortsList % Create ALL ports for pacmans/ghosts
@@ -13,6 +12,7 @@ define
    AssignSpawnPlayers % Assign ALL spawn by sending msg to pacmans/ghosts ports
    SpawnPlayers % Spawn ALL pacmans/ghosts by sending msg to their ports and to WindowPort
    SpawnItems % Spawn ALL bonus/points by sending msg to window port
+   SendItemsPosList % Send a list of item to the given port with the given msg
 
    MovePlayer % Move ONE player by sending msg to player port then to window port
 
@@ -25,7 +25,16 @@ define
    
    WindowPort
    PacmansPorts GhostsPorts
-in 
+   PacmansMapping GhostsMapping % List with: port#<spawn>
+in
+   % Send a list of item to the given port with the given msg
+   proc{SendItemsPosList Port ItemsList Msg}
+      case ItemsList
+      of nil then skip
+      [] Item|T then {Send Port Msg(Item)} {SendItemsPosList Port T Msg}
+      end
+   end
+   
    % Create ports for pacmans/ghosts
    fun{CreatePortsList StartID Nb Kinds Colors Type}
       fun{Local I Kinds Colors}
@@ -79,24 +88,24 @@ in
    end
 
    % Assign spawns to pacmans/ghosts at random
-   proc{AssignSpawnPlayers WindowPort PlayersPorts NbPorts Spawns NbSpawns}
+   fun{AssignSpawnPlayers WindowPort PlayersPorts NbPorts Spawns NbSpawns}
       fun{Count L V I}
 	 case L
 	 of nil then I
-	 [] H|T then
+	 [] (_#H)|T then
 	    if H==V then {Count T V I+1}
 	    else {Count T V I}
 	    end
 	 end
       end
-      proc{Local PlayersPorts Assigned}
+      fun{Local PlayersPorts Assigned}
 	 case PlayersPorts
-	 of nil then skip
+	 of nil then Assigned
 	 [] PlayerPort|T then Elem={Nth Spawns ({OS.rand} mod NbSpawns)+1} in
 	    if {Count Assigned Elem 0}>=(NbPorts div NbSpawns) then {Local PlayersPorts Assigned}
 	    else
 	       {Send PlayerPort assignSpawn(Elem)}
-	       {Local T Elem|Assigned}
+	       {Local T (PlayerPort#Elem)|Assigned}
 	    end
 	 end
       end
@@ -157,14 +166,34 @@ in
       {InitItems WindowPort PointsSpawns initPoint}
       
       % Assign spawns to Pacmans + Ghosts
-      {AssignSpawnPlayers WindowPort PacmansPorts Input.nbPacman PacmansSpawns {Length PacmansSpawns}}
-      {AssignSpawnPlayers WindowPort GhostsPorts Input.nbGhost GhostsSpawns {Length GhostsSpawns}}
+      PacmansMapping={AssignSpawnPlayers WindowPort PacmansPorts Input.nbPacman PacmansSpawns {Length PacmansSpawns}}
+      GhostsMapping={AssignSpawnPlayers WindowPort GhostsPorts Input.nbGhost GhostsSpawns {Length GhostsSpawns}}
 
       % Spawn Pacmans + Ghosts
       {SpawnPlayers WindowPort PacmansPorts spawnPacman}
       {SpawnPlayers WindowPort GhostsPorts spawnGhost}
       {SpawnItems WindowPort BonusSpawns spawnBonus}
       {SpawnItems WindowPort PointsSpawns spawnPoint}
+
+      % Inform Pacmans about items positions
+      for I in 1..Input.nbPacman do Port={Nth PacmansPorts I} in
+	 {SendItemsPosList Port BonusSpawns bonusSpawn}
+	 {SendItemsPosList Port PointsSpawns pointSpawn}
+      end
+      % Infrom Pacmans about Ghosts position
+      for I in 1..Input.nbPacman do PacmanPort={Nth PacmansPorts I} in
+	 for J in 1..Input.nbGhost do ID Elem={Nth GhostsMapping J} in
+	    {Send Elem.1 getId(ID)} {Wait ID}
+	    {Send PacmanPort ghostPos(ID Elem.2)}
+	 end
+      end
+      % Inform Ghosts about Pacmans positions
+      for I in 1..Input.nbGhost do GhostPort={Nth GhostsPorts I} in
+	 for J in 1..Input.nbPacman do ID Elem={Nth PacmansMapping J} in
+	    {Send Elem.1 getId(ID)} {Wait ID}
+	    {Send GhostPort pacmanPos(ID Elem.2)}
+	 end
+      end
    end
    
    thread
