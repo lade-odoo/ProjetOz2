@@ -24,6 +24,7 @@ define
    MovePlayer
    PlayerAtPos
    RespawnItem
+   ChangeMode
 
    Initialisation
    TurnByTurn
@@ -176,6 +177,14 @@ in
       {Send WindowPort hidePoint(Pos)}
       {Send WindowPort scoreUpdate(ID NewScore)}
    end
+   proc{ChangeMode WindowPort PlayersMapping Mode}
+      {Send WindowPort setMode(Mode)}
+      if PlayersMapping\=null then 
+	 {SendAll PlayersMapping pacman setMode(Mode)}
+	 {SendAll PlayersMapping ghost setMode(Mode)}
+      else skip
+      end
+   end
 
    fun{PlayerAtPos Mapping Pos Type}
       case Mapping
@@ -221,9 +230,8 @@ in
       (PacmanID#PacmanData)={PlayerAtPos PlayersMapping Pos pacman}
    in
       if PacmanID\=null then
-	 {System.show PacmanID}
 	 if Type==point then {AddPoint WindowPort PacmanData.port Pos} false
-	 else false
+	 else {ChangeMode WindowPort null hunt} false
 	 end
       elseif Type==point then
 	 {Send WindowPort spawnPoint(Pos)}
@@ -238,24 +246,27 @@ in
    
    % (ID#data(port:_ pt:<position> turnToRespawn:_)) = PlayersMapping
    % <position>#TurnToRespawn = BonusPos'|'PointPos
-   proc{TurnByTurn WindowPort PlayersMapping BonusPos PointPos Round}
-      fun{PlayOneTurn Mapping BonusPos PointPos MappingAcc}
+   % <mode>#TurnLeft = Mode
+   proc{TurnByTurn WindowPort PlayersMapping BonusPos PointPos}
+      fun{PlayOneTurn Mapping BonusPos PointPos Mode MappingAcc}
 	 case Mapping
-	 of nil then rt(mapping:{Reverse MappingAcc} bonusPos:BonusPos pointPos:PointPos)
+	 of nil then rt(mapping:{Reverse MappingAcc} bonusPos:BonusPos pointPos:PointPos mode:Mode)
 	 [] (pacman(id:_ color:_ name:_)#data(port:Port pt:_ turnToRespawn:TurnToRespawn))|T then
 	    move(ID P)={MovePlayer WindowPort Port}
 	    (GhostID#_)={PlayerAtPos PlayersMapping P ghost}
 	    NewMappingElem=(ID#data(port:Port pt:P turnToRespawn:TurnToRespawn))
 	 in
 	    if GhostID\=null then
-	       {PlayOneTurn T BonusPos PointPos NewMappingElem|MappingAcc}
+	       {PlayOneTurn T BonusPos PointPos Mode NewMappingElem|MappingAcc}
 	    elseif {ContainsPos P BonusPos} then
-	       {PlayOneTurn T {DisableFromItemsList BonusPos P Input.respawnTimeBonus} PointPos NewMappingElem|MappingAcc}
+	       {Send WindowPort hideBonus(P)}
+	       {ChangeMode WindowPort PlayersMapping hunt}
+	       {PlayOneTurn T {DisableFromItemsList BonusPos P Input.respawnTimeBonus} PointPos hunt#Input.huntTime NewMappingElem|MappingAcc}
 	    elseif {ContainsPos P PointPos} then
 	       {AddPoint WindowPort Port P}
 	       {SendAll PlayersMapping pacman pointSpawn(P)}
-	       {PlayOneTurn T BonusPos {DisableFromItemsList PointPos P Input.respawnTimePoint} NewMappingElem|MappingAcc}
-	    else {PlayOneTurn T BonusPos PointPos NewMappingElem|MappingAcc}
+	       {PlayOneTurn T BonusPos {DisableFromItemsList PointPos P Input.respawnTimePoint} Mode NewMappingElem|MappingAcc}
+	    else {PlayOneTurn T BonusPos PointPos Mode NewMappingElem|MappingAcc}
 	    end
 	 [] (ghost(id:_ color:_ name:_)#data(port:Port pt:_ turnToRespawn:TurnToRespawn))|T then
 	    move(ID P)={MovePlayer WindowPort Port}
@@ -263,8 +274,8 @@ in
 	    NewMappingElem=(ID#data(port:Port pt:P turnToRespawn:TurnToRespawn))
 	 in
 	    if PacmanID\=null then
-	       {PlayOneTurn T BonusPos PointPos NewMappingElem|MappingAcc}
-	    else {PlayOneTurn T BonusPos PointPos NewMappingElem|MappingAcc}
+	       {PlayOneTurn T BonusPos PointPos Mode NewMappingElem|MappingAcc}
+	    else {PlayOneTurn T BonusPos PointPos Mode NewMappingElem|MappingAcc}
 	    end
 	 end
       end
@@ -291,19 +302,25 @@ in
 	    end
 	 end
       end
-      proc{Local Mapping BonusPos PointPos Round}
+      proc{Local Mapping BonusPos PointPos Mode Round}
 	 %if {CountPlayerInMapping Mapping pacman 0}==0 then skip
-	 if Round==30 then skip
+	 if Round==300 then skip
 	 else
-	    rt(mapping:NewMapping bonusPos:RTBonusPos pointPos:RTPointPos)={PlayOneTurn Mapping BonusPos PointPos nil}
+	    rt(mapping:NewMapping bonusPos:RTBonusPos pointPos:RTPointPos mode:NewMode)={PlayOneTurn Mapping BonusPos PointPos Mode nil}
 	    NewBonusPos={UpdateItemsMapping RTBonusPos bonus NewMapping}
 	    NewPointPos={UpdateItemsMapping RTPointPos point NewMapping}
 	 in
-	    {Delay 2500} {Local NewMapping NewBonusPos NewPointPos Round+1}
+	    {Delay 1000}
+	    if {And NewMode.1==hunt NewMode.2==0} then
+	       {ChangeMode WindowPort NewMapping classic}
+	       {Local NewMapping NewBonusPos NewPointPos classic#null Round+1}
+	    elseif NewMode.1==hunt then {Local NewMapping NewBonusPos NewPointPos hunt#NewMode.2-1 Round+1}
+	    else {Local NewMapping NewBonusPos NewPointPos classic#null Round+1}
+	    end
 	 end
       end
    in
-      {Local PlayersMapping BonusPos PointPos 1}
+      {Local PlayersMapping BonusPos PointPos classic#null 1}
    end
    
    
@@ -369,7 +386,7 @@ in
    thread
       {Initialisation}
       local PointsMapping={BuildMappingItems PointsSpawns} BonusMapping={BuildMappingItems BonusSpawns} in
-	 {TurnByTurn WindowPort {RandomMerge PacmansMapping GhostsMapping} BonusMapping PointsMapping 1}
+	 {TurnByTurn WindowPort {RandomMerge PacmansMapping GhostsMapping} BonusMapping PointsMapping}
       end
    end
 end
