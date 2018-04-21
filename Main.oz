@@ -16,13 +16,14 @@ define
    SendItemsPosList % Send a list of item to the given port with the given msg
    
    RandomMerge % Merge and order at random the two given list
-   MovePlayer
-   PlayerAtPos
-   ListContains
-   DeleteFromList
-
+   BuildMappingItems
    AddPoint
    SendAll
+   ContainsPos
+   DisableFromItemsList
+   MovePlayer
+   PlayerAtPos
+   RespawnItem
 
    Initialisation
    TurnByTurn
@@ -32,7 +33,7 @@ define
    
    WindowPort
    PacmansPorts GhostsPorts
-   PacmansMapping GhostsMapping % List with: port#<position>
+   PacmansMapping GhostsMapping % List with: ID#data(port:<Port> pt:<position> turnToRespawn:null'|'0'|'...'|'Infinite
 in
    % Send a list of item to the given port with the given msg
    proc{SendItemsPosList Port ItemsList Msg}
@@ -43,7 +44,7 @@ in
    end
    
    % Create ports for pacmans/ghosts
-   fun{CreatePortsList StartID Nb Kinds Colors Type}
+   fun{CreatePortsList StartID Kinds Colors Type}
       fun{Local I Kinds Colors}
 	 case Kinds#Colors
 	 of nil#nil then nil
@@ -99,7 +100,7 @@ in
       fun{Count L P I}
 	 case L
 	 of nil then I
-	 [] (_#data(port:_ pt:Pos))|T then
+	 [] (_#data(port:_ pt:Pos turnToRespawn:_))|T then
 	    if Pos==P then {Count T P I+1}
 	    else {Count T P I}
 	    end
@@ -113,7 +114,7 @@ in
 	    else
 	       {Send PlayerPort getId(ID)} {Wait ID}
 	       {Send PlayerPort assignSpawn(Spawn)}
-	       {Local T (ID#data(port:PlayerPort pt:Spawn))|Assigned}
+	       {Local T (ID#data(port:PlayerPort pt:Spawn turnToRespawn:null))|Assigned}
 	    end
 	 end
       end
@@ -159,102 +160,150 @@ in
       end
    end
 
-   % Move ONE player ONCE and return move made
    fun{MovePlayer WindowPort PlayerPort}
       ID P
    in
       {Send PlayerPort move(ID P)} {Wait ID} {Wait P}
-      case {Record.label ID}
-      of pacman then {Send WindowPort movePacman(ID P)}
-      [] ghost then {Send WindowPort moveGhost(ID P)}
+      if {Record.label ID}==pacman then {Send WindowPort movePacman(ID P)}
+      else {Send WindowPort moveGhost(ID P)}
       end
       move(ID P)
    end
-
-   % Check if there is a player at <position> P and return the <ghost>/<pacman> ID or null
-   fun{PlayerAtPos P PlayersMapping PlayerType}
-      case PlayersMapping
-      of nil then null
-      [] (ID#data(port:_ pt:Pos))|T then
-	 if {And {Record.label ID}==PlayerType Pos==P} then ID
-	 else {PlayerAtPos P T PlayerType}
-	 end
-      end
-   end
-   % Check if there is the given value in the given list
-   fun{ListContains V L}
-      case L
-      of nil then false
-      [] H|T then
-	 if H==V then true
-	 else {ListContains V T}
-	 end
-      end
-   end
-   % Delete an element from the given list
-   fun{DeleteFromList L V}
-      case L
-      of nil then nil
-      [] H|T then
-	 if H==V then T
-	 else H|{DeleteFromList T V}
-	 end
-      end
-   end
-
-   % Add point to the given Port for <position> P
-   proc{AddPoint WindowPort PlayerPort P}
-      % pacman:pointSpawn(P) to ALL
+   proc{AddPoint WindowPort PlayerPort Pos}
       ID NewScore
    in
       {Send PlayerPort addPoint(Input.rewardPoint ID NewScore)}
-      {Send WindowPort hidePoint(P)}
+      {Send WindowPort hidePoint(Pos)}
       {Send WindowPort scoreUpdate(ID NewScore)}
    end
 
-   proc{SendAll PlayersMapping Type Msg}
-      case PlayersMapping
+   fun{PlayerAtPos Mapping Pos Type}
+      case Mapping
+      of nil then null#null
+      [] (ID#Data)|T then
+	 if {And {Record.label ID}==Type Data.pt==Pos} then ID#Data
+	 else {PlayerAtPos T Pos Type}
+	 end
+      end
+   end
+   
+   fun{ContainsPos Pos L}
+      case L
+      of nil then false
+	 [] (P#TurnToRespawn)|T then
+	 if {And P==Pos TurnToRespawn==null} then true
+	 else {ContainsPos Pos T}
+	 end
+      end
+   end
+
+   fun{DisableFromItemsList ItemsMapping Pos RespawnTurn}
+      case ItemsMapping
+      of nil then nil
+      [] H|T then
+	 if Pos==H.1 then (H.1#RespawnTurn)|T
+	 else H|{DisableFromItemsList T Pos RespawnTurn}
+	 end
+      end
+   end
+
+   proc{SendAll Mapping Type Msg}
+      case Mapping
       of nil then skip
-      [] (ID#data(port:PlayerPort pt:_))|T then
-	 if {Record.label ID}==Type then {Send PlayerPort Msg} {SendAll T Type Msg}
+      [] (ID#data(port:Port pt:_ turnToRespawn:_))|T then
+	 if {Record.label ID}==Type then {Send Port Msg} {SendAll T Type Msg}
 	 else {SendAll T Type Msg}
 	 end
       end
    end
-      
+
+   fun{RespawnItem Pos Type WindowPort PlayersMapping}
+      (PacmanID#PacmanData)={PlayerAtPos PlayersMapping Pos pacman}
+   in
+      if PacmanID\=null then
+	 {System.show PacmanID}
+	 if Type==point then {AddPoint WindowPort PacmanData.port Pos} false
+	 else false
+	 end
+      elseif Type==point then
+	 {Send WindowPort spawnPoint(Pos)}
+	 {SendAll PlayersMapping pacman pointSpawn(Pos)}
+	 true
+      else
+	 {Send WindowPort spawnBonus(Pos)}
+	 {SendAll PlayersMapping pacman bonusSpawn(Pos)}
+	 true
+      end
+   end
+   
+   % (ID#data(port:_ pt:<position> turnToRespawn:_)) = PlayersMapping
+   % <position>#TurnToRespawn = BonusPos'|'PointPos
    proc{TurnByTurn WindowPort PlayersMapping BonusPos PointPos Round}
       fun{PlayOneTurn Mapping BonusPos PointPos MappingAcc}
 	 case Mapping
-	 of nil then oneTurn(mapping:{Reverse MappingAcc} bonusPos:BonusPos pointPos:PointPos)
-	 [] (pacman(id:_ color:_ name:_)#data(port:Port pt:_))|T then
-	    move(ID P)={MovePlayer WindowPort Port} NewMapElem=(ID#data(port:Port pt:P))
-	    IDFound={PlayerAtPos P PlayersMapping ghost}
+	 of nil then rt(mapping:{Reverse MappingAcc} bonusPos:BonusPos pointPos:PointPos)
+	 [] (pacman(id:_ color:_ name:_)#data(port:Port pt:_ turnToRespawn:TurnToRespawn))|T then
+	    move(ID P)={MovePlayer WindowPort Port}
+	    (GhostID#_)={PlayerAtPos PlayersMapping P ghost}
+	    NewMappingElem=(ID#data(port:Port pt:P turnToRespawn:TurnToRespawn))
 	 in
-	    if IDFound\=null then
-	       {PlayOneTurn T BonusPos PointPos NewMapElem|MappingAcc}
-	    elseif {ListContains P BonusPos} then
-	       {PlayOneTurn T {DeleteFromList BonusPos P} PointPos NewMapElem|MappingAcc}
-	    elseif {ListContains P PointPos} then
+	    if GhostID\=null then
+	       {PlayOneTurn T BonusPos PointPos NewMappingElem|MappingAcc}
+	    elseif {ContainsPos P BonusPos} then
+	       {PlayOneTurn T {DisableFromItemsList BonusPos P Input.respawnTimeBonus} PointPos NewMappingElem|MappingAcc}
+	    elseif {ContainsPos P PointPos} then
 	       {AddPoint WindowPort Port P}
 	       {SendAll PlayersMapping pacman pointSpawn(P)}
-	       {PlayOneTurn T BonusPos {DeleteFromList PointPos P} NewMapElem|MappingAcc}
-	    else {PlayOneTurn T BonusPos PointPos NewMapElem|MappingAcc}
+	       {PlayOneTurn T BonusPos {DisableFromItemsList PointPos P Input.respawnTimePoint} NewMappingElem|MappingAcc}
+	    else {PlayOneTurn T BonusPos PointPos NewMappingElem|MappingAcc}
 	    end
-	 [] (ghost(id:_ color:_ name:_)#data(port:Port pt:_))|T then
-	    move(ID P)={MovePlayer WindowPort Port} NewMapElem=(ID#data(port:Port pt:P))
-	    IDFound={PlayerAtPos P PlayersMapping pacman}
+	 [] (ghost(id:_ color:_ name:_)#data(port:Port pt:_ turnToRespawn:TurnToRespawn))|T then
+	    move(ID P)={MovePlayer WindowPort Port}
+	    (PacmanID#_)={PlayerAtPos PlayersMapping P pacman}
+	    NewMappingElem=(ID#data(port:Port pt:P turnToRespawn:TurnToRespawn))
 	 in
-	    if IDFound==null then {PlayOneTurn T BonusPos PointPos NewMapElem|MappingAcc}
-	    else {PlayOneTurn T BonusPos PointPos NewMapElem|MappingAcc}
+	    if PacmanID\=null then
+	       {PlayOneTurn T BonusPos PointPos NewMappingElem|MappingAcc}
+	    else {PlayOneTurn T BonusPos PointPos NewMappingElem|MappingAcc}
 	    end
 	 end
       end
-   in
-      if Round==30 then skip
-      else oneTurn(mapping:NewPlayersMapping bonusPos:NewBonusPos pointPos:NewPointPos)={PlayOneTurn PlayersMapping BonusPos PointPos nil} in
-	 {Delay 1000}
-	 {TurnByTurn WindowPort NewPlayersMapping NewBonusPos NewPointPos Round+1}
+      fun{CountPlayerInMapping Mapping Type C}
+	 case Mapping
+	 of nil then C
+	 [] (ID#_)|T then
+	    if {Record.label ID}==Type then {CountPlayerInMapping T Type C+1}
+	    else {CountPlayerInMapping T Type C}
+	    end
+	 end
       end
+      fun{UpdateItemsMapping ItemsMapping Type PlayersMapping}
+	 case ItemsMapping
+	 of nil then nil
+	 [] (Pos#TurnToRespawn)|T then
+	    if TurnToRespawn==null then (Pos#TurnToRespawn)|{UpdateItemsMapping T Type PlayersMapping}
+	    elseif TurnToRespawn==0 then
+	       if {RespawnItem Pos Type WindowPort PlayersMapping} then (Pos#null)|{UpdateItemsMapping T Type PlayersMapping}
+	       elseif Type==point then (Pos#Input.respawnTimePoint)|{UpdateItemsMapping T Type PlayersMapping}
+	       else (Pos#Input.respawnTimeBonus)|{UpdateItemsMapping T Type PlayersMapping}
+	       end
+	    else (Pos#TurnToRespawn-1)|{UpdateItemsMapping T Type PlayersMapping}
+	    end
+	 end
+      end
+      proc{Local Mapping BonusPos PointPos Round}
+	 %if {CountPlayerInMapping Mapping pacman 0}==0 then skip
+	 if Round==30 then skip
+	 else
+	    rt(mapping:NewMapping bonusPos:RTBonusPos pointPos:RTPointPos)={PlayOneTurn Mapping BonusPos PointPos nil}
+	    NewBonusPos={UpdateItemsMapping RTBonusPos bonus NewMapping}
+	    NewPointPos={UpdateItemsMapping RTPointPos point NewMapping}
+	 in
+	    {Delay 2500} {Local NewMapping NewBonusPos NewPointPos Round+1}
+	 end
+      end
+   in
+      {Local PlayersMapping BonusPos PointPos 1}
    end
    
    
@@ -270,8 +319,8 @@ in
       
       % Create port for Window + Pacmans + Ghosts
       WindowPort={GUI.portWindow}
-      PacmansPorts={CreatePortsList 1 Input.nbPacman Input.pacman Input.colorPacman pacman}
-      GhostsPorts={CreatePortsList 1+Input.nbPacman Input.nbGhost Input.ghost Input.colorGhost ghost}
+      PacmansPorts={CreatePortsList 1 Input.pacman Input.colorPacman pacman}
+      GhostsPorts={CreatePortsList 1+Input.nbPacman Input.ghost Input.colorGhost ghost}
       
       % Init Window + Pacmans + Ghosts + Bonus + Point
       {Send WindowPort buildWindow}
@@ -297,21 +346,30 @@ in
       end
       % Infrom Pacmans about Ghosts position
       for I in 1..Input.nbPacman do PacmanPort={Nth PacmansPorts I} in
-	 for J in 1..Input.nbGhost do (ID#data(port:_ pt:Pos))={Nth GhostsMapping J} in
+	 for J in 1..Input.nbGhost do (ID#data(port:_ pt:Pos turnToRespawn:_))={Nth GhostsMapping J} in
 	    {Send PacmanPort ghostPos(ID Pos)}
 	 end
       end
       % Inform Ghosts about Pacmans positions
       for I in 1..Input.nbGhost do GhostPort={Nth GhostsPorts I} in
-	 for J in 1..Input.nbPacman do (ID#data(port:_ pt:Pos))={Nth PacmansMapping J} in
+	 for J in 1..Input.nbPacman do (ID#data(port:_ pt:Pos turnToRespawn:_))={Nth PacmansMapping J} in
 	    {Send GhostPort pacmanPos(ID Pos)}
 	 end
       end
    end
 
    
+   fun{BuildMappingItems Positions}
+      case Positions
+      of nil then nil
+      [] H|T then (H#null)|{BuildMappingItems T}
+      end
+   end
+      
    thread
       {Initialisation}
-      {TurnByTurn WindowPort {RandomMerge PacmansMapping GhostsMapping} BonusSpawns PointsSpawns 1}
+      local PointsMapping={BuildMappingItems PointsSpawns} BonusMapping={BuildMappingItems BonusSpawns} in
+	 {TurnByTurn WindowPort {RandomMerge PacmansMapping GhostsMapping} BonusMapping PointsMapping 1}
+      end
    end
 end
