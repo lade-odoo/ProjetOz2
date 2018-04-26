@@ -58,7 +58,7 @@ in
 	  [1 0 1 1 1 0 1 1 0 1 0 1]
 	  [1 0 0 0 1 0 0 1 0 1 0 1]
 	  [1 0 1 0 1 1 0 1 0 1 0 1]
-	  [1 4 1 0 2 0 0 0 2 0 0 1]
+	  [1 4 1 0 2 0 0 0 2 0 0 1] % 1 4 ....
 	  [1 1 1 1 1 1 1 1 1 1 1 1]]
 
 %%%% Respawn times %%%%
@@ -77,7 +77,7 @@ in
 %%%%
 
    NbLives = 2
-   HuntTime = 5000
+   HuntTime = 50
    
 %%%% Players description %%%%
 
@@ -90,7 +90,7 @@ in
 
 %%%% Thinking parameters (only in simultaneous) %%%%
    
-   ThinkMin = 500
-   ThinkMax = 3000
+   ThinkMin = 50 % 500
+   ThinkMax = 300 % 3000
    
 end

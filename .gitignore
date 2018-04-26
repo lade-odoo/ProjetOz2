@@ -1,2 +1,4 @@
 *.ozf
 *.pdf
+log.*
+*.oz~

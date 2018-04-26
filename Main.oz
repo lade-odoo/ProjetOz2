@@ -1,6 +1,8 @@
 functor
 import
+   Input
    Initialisation
+   TurnByTurn
    Simultaneous
 define
    CreateItemsMap
@@ -20,8 +22,13 @@ in
 	 Points={CreateItemsMap Initialisation.pointsSpawns}
 	 Bonus={CreateItemsMap Initialisation.bonusSpawns}
       in
-	 {Simultaneous.simultaneous WindowPort Pacmans Ghosts Points Bonus}
-	 {Send WindowPort displayWinner(Simultaneous.winner.1)}
+	 if Input.isTurnByTurn then
+	    {TurnByTurn.turnByTurn WindowPort Pacmans Ghosts Points Bonus}
+	    {Send WindowPort displayWinner(TurnByTurn.winner.1)}
+	 else
+	    {Simultaneous.simultaneous WindowPort Pacmans Ghosts Points Bonus}
+	    {Send WindowPort displayWinner(Simultaneous.winner.1)}
+	 end
       end
    end
 end

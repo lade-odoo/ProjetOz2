@@ -27,7 +27,6 @@ in
       else ID P HasSurvived in
 	 if IsAlive then
 	    {Send PlayerPort move(ID P)} {Wait ID} {Wait P}
-	    {System.show pacmanPlayer(ID LivesLeft)}
 	    if {Or ID==null P==null} then {PacmanPlayer MapPort PlayerPort false LivesLeft-1} % Killed
 	    else
 	       {Delay Input.thinkMin+({OS.rand} mod (Input.thinkMax-Input.thinkMin))}
@@ -36,7 +35,6 @@ in
 	 else
 	    {Delay Input.respawnTimePacman}
 	    {Send PlayerPort spawn(ID P)} {Wait ID} {Wait P}
-	    {System.show pacmanPlayer(ID LivesLeft)}
 	    if {Or ID==null P==null} then {PacmanPlayer MapPort PlayerPort false LivesLeft-1} % Killed
 	    else {Send MapPort spawnPacman(ID P HasSurvived)} {Wait HasSurvived} % Spawned
 	    end
@@ -83,7 +81,6 @@ in
      
    proc{TreatStream Stream MapPort WindowPort Pacmans Ghosts Mode Points Bonus}
       {System.show 'MapServer: '#Stream.1}
-      {System.show 'Points: '#Points}
       case Stream
       of nil then skip
       [] spawnPacman(ID P HasSurvived)|T then
@@ -353,7 +350,7 @@ in
       KillThread
    in
       for I in 1..Input.nbPacman do
-	 thread {PacmanPlayer MapPort {Nth Pacmans I}.2 true Input.nbLives} {System.show beforeState} StatesAgents.I=unit {System.show afterState} end
+	 thread {PacmanPlayer MapPort {Nth Pacmans I}.2 true Input.nbLives} StatesAgents.I=unit end
       end
       for I in 1..Input.nbGhost do
 	 thread {GhostPlayer MapPort {Nth Ghosts I}.2 true KillThread} end
@@ -362,7 +359,6 @@ in
       % Wait end of all pacmans then kill ghosts agents
       for I in 1..Input.nbPacman do
 	 {Wait StatesAgents.I}
-	 {System.show agentEnded(I)}
       end
       KillThread=unit
 

@@ -3,6 +3,7 @@ import
    QTk at 'x-oz://system/wp/QTk.ozf'
    Input
    Browser
+   System
 export
    portWindow:StartWindow
 define
@@ -296,6 +297,7 @@ in
 
    proc{TreatStream Stream Grid Pacmans Ghosts Point Bonus}
       {Browser.browse Stream.1}
+	  {System.show Stream.1}
       case Stream
       of nil then skip
       [] buildWindow|T then NewGrid in 
@@ -341,6 +343,7 @@ in
 	 {Browser.browse 'the winner is '#ID}
       [] M|T then
 	 {Browser.browse 'unsupported message'#M}
+	 {System.show 'unsupported message'#M}
 	 {TreatStream T Grid Pacmans Ghosts Point Bonus}
       end
    end
