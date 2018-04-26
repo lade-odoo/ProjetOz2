@@ -85,11 +85,11 @@ in
 
    
 %%%%% Squares of path and wall
-   Squares = square(0:label(text:"" width:1 height:1 bg:c(0 0 204))
-		    1:label(text:"" borderwidth:5 relief:raised width:1 height:1 bg:c(0 0 0))
-		    2:label(text:"" width:1 height:1 bg:c(0 0 150))
-		    3:label(text:"" width:1 height:1 bg:c(0 0 255))
-		    4:label(text:"" width:1 height:1 bg:c(0 150 150))
+   Squares = square(0:label(text:"" width:1 height:1 bg:c(0 0 0))
+		    1:label(text:"" borderwidth:5 relief:raised width:1 height:1 bg:c(0 191 255))
+		    2:label(text:"" width:1 height:1 bg:c(0 0 0))
+		    3:label(text:"" width:1 height:1 bg:c(0 0 0))
+		    4:label(text:"" width:1 height:1 bg:c(0 0 0))
 		   )
    
 %%%%% Function to draw the map
@@ -197,7 +197,7 @@ in
    fun{InitBonus Grid Position}
       Handle Label
    in
-      Label = label(text:"" height:1 width:1 handle:Handle bg:red)
+      Label = label(image:{QTk.newImage photo(format:ppm file:'item.ppm')} height:10 width:10 handle:Handle)
       {Grid.grid configure(Label row:0 column:0)}
       {Grid.grid remove(Handle)}
       guiBonus(position:Position bonus:Handle)
@@ -219,7 +219,7 @@ in
    fun{InitPoint Grid Position}
       Handle Label
    in
-      Label = label(text:"" height:1 width:1 handle:Handle bg:white)
+      Label = label(image:{QTk.newImage photo(format:ppm file:'item.ppm')} height:1 width:1 handle:Handle)
       {Grid.grid configure(Label row:0 column:0)}
       {Grid.grid remove(Handle)}
       guiPoint(position:Position point:Handle)
