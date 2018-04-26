@@ -15,7 +15,7 @@ in
    end
    
    thread
-      {Initialisation.initialisation} {Delay 10000}
+      {Initialisation.initialisation} {Delay 30000}
       local WindowPort=Initialisation.windowPort
 	 Pacmans=Initialisation.pacmansMapping
 	 Ghosts=Initialisation.ghostsMapping

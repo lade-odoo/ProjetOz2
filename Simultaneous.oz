@@ -156,7 +156,7 @@ in
 	 pacmans({UpdatePlayers Pacmans ID Position})#ghosts({UpdatePlayers Ghosts Ghost.1 null})#true
       else % Spawn
 	 {Send WindowPort spawnPacman(ID Position)}
-	 {SendAll Ghosts ghostPos(ID Position)}
+	 {SendAll Ghosts pacmanPos(ID Position)}
 	 pacmans({UpdatePlayers Pacmans ID Position})#ghosts(Ghosts)#true
       end
    end

@@ -149,7 +149,7 @@ in
 	 pacmans({UpdatePlayersPosition Pacmans ID Position})#ghosts({UpdatePlayersRespawn Ghosts Ghost.1 Input.respawnTimeGhost})#true
       else % Spawn
 	 {Send WindowPort spawnPacman(ID Position)}
-	 {SendAll Ghosts ghostPos(ID Position)}
+	 {SendAll Ghosts pacmanPos(ID Position)}
 	 pacmans({UpdatePlayersPosition Pacmans ID Position})#ghosts(Ghosts)#true
       end
    end

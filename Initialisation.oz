@@ -105,7 +105,7 @@ in
 	 case PlayersPorts
 	 of nil then Assigned
 	 [] PlayerPort|T then Spawn={Nth Spawns ({OS.rand} mod NbSpawns)+1} ID in
-	    if {Count Assigned Spawn 0}>=(NbPorts div NbSpawns) then {Local PlayersPorts Assigned}
+	    if {Count Assigned Spawn 0}>(NbPorts div NbSpawns) then {Local PlayersPorts Assigned}
 	    else
 	       {Send PlayerPort getId(ID)} {Wait ID}
 	       {Send PlayerPort assignSpawn(Spawn)}
