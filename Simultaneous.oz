@@ -23,6 +23,7 @@ define
    Winner
 in
    proc{PacmanPlayer MapPort PlayerPort IsAlive LivesLeft}
+   {System.show livesLeft(LivesLeft)}
       if LivesLeft==0 then skip
       else ID P HasSurvived in
 	 if IsAlive then

@@ -12,6 +12,7 @@ define
    GetNewPosition
    WallAtPosition
    AvailableDirections
+   ChooseDirection
    
    StartPlayer
    TreatStream
@@ -47,11 +48,43 @@ in
       end
    end
 
-   fun{Move Position}
+   fun{Move Position Pacmans}
       Directions={AvailableDirections Position Input.map [north sud east west]}
    in
       if Directions==nil then null
-      else {GetNewPosition Position {Nth Directions ({OS.rand} mod {Length Directions})+1}}
+      else {GetNewPosition Position {ChooseDirection Directions Position Pacmans}}
+      end
+   end
+   fun{ChooseDirection Directions Position Pacmans}
+      fun{DistanceBetweenPosition Position1 Position2}
+	 local Dx={Int.toFloat (Position1.x-Position2.x)} Dy={Int.toFloat (Position1.y-Position2.y)} in
+	    {Float.sqrt Dx*Dx+Dy*Dy}
+	 end
+      end
+      fun{DistanceClosestPacman Pacmans Position BestDistance}
+	 case Pacmans
+	 of nil then BestDistance
+	 [] (_#PacmanPosition)|T then Distance={DistanceBetweenPosition Position PacmanPosition} in
+	    if BestDistance==null then {DistanceClosestPacman T Position Distance}
+	    elseif Distance<BestDistance then {DistanceClosestPacman T Position Distance}
+	    else {DistanceClosestPacman T Position BestDistance}
+	    end
+	 end
+      end
+      fun{Local Directions BestDistance BestPosition BestDirection}
+	 case Directions
+	 of nil then BestDirection
+	 [] Direction|T then NewPosition={GetNewPosition Position Direction} Distance={DistanceClosestPacman Pacmans NewPosition null} in
+	    if BestPosition==null then {Local T Distance NewPosition Direction}
+	    elseif Distance<BestDistance then {Local T Distance NewPosition Direction}
+	    else {Local T BestDistance BestPosition BestDirection}
+	    end
+	 end
+      end
+   in
+      case Pacmans
+      of nil then {Nth Directions ({OS.rand} mod {Length Directions})+1}
+      else {Local Directions 0 null null}
       end
    end
    fun{AvailableDirections Position Grid Directions}
@@ -64,7 +97,6 @@ in
       end
    end
    fun{WallAtPosition ColumnPos RowPos Grid}
-      {System.show wallAtPosition(ColumnPos RowPos)}
       {Nth {Nth Grid RowPos} ColumnPos}==1
    end
    fun{GetNewPosition Position Direction}
@@ -90,7 +122,7 @@ in
       [] spawn(ID P)|T then ID=MyID P=MySpawn
 	 {TreatStream T MyID MySpawn MySpawn true Pacmans Mode}
       [] move(ID P)|T then
-	 if IsAlive then NewPosition={Move MyPosition} in
+	 if IsAlive then NewPosition={Move MyPosition Pacmans} in
 	    if NewPosition==null then ID=MyID P=MyPosition
 	       {TreatStream T MyID MySpawn MyPosition IsAlive Pacmans Mode}
 	    else

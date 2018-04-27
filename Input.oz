@@ -47,7 +47,7 @@ in
 
 %%%% Style of game %%%%
    
-   IsTurnByTurn = true
+   IsTurnByTurn = false
 
 %%%% Description of the map %%%%
    
@@ -67,10 +67,10 @@ in
 
 %%%% Respawn times %%%%
    
-   RespawnTimePoint = 10
-   RespawnTimeBonus = 15
-   RespawnTimePacman = 5
-   RespawnTimeGhost = 5
+   RespawnTimePoint = 5000 %50
+   RespawnTimeBonus = 15000 %150
+   RespawnTimePacman = 5000 %50
+   RespawnTimeGhost = 5000 %50
 
 %%%% Rewards and penalities %%%%
 
@@ -81,21 +81,21 @@ in
 %%%%
 
    NbLives = 2
-   HuntTime = 50
+   HuntTime = 5000 %50
    
 %%%% Players description %%%%
 
    NbPacman = 2
-  % Pacman = [pacman000random pacmanTeam65]
-   Pacman = [pacmanTeam65 pacmanTeam65]
+   %Pacman = [pacman000random pacman000random]
+   Pacman = [pacman065random pacman065random]
    ColorPacman = [yellow red]
-   NbGhost = 1
-   Ghost = [ghostTeam65]
-   ColorGhost = [green] %white orange white]
+   NbGhost = 2
+   Ghost = [ghost065intel ghost065intel]
+   ColorGhost = [green white]% orange white]
 
 %%%% Thinking parameters (only in simultaneous) %%%%
    
-   ThinkMin = 50 % 500
-   ThinkMax = 300 % 3000
+   ThinkMin = 500
+   ThinkMax = 1500
    
 end
