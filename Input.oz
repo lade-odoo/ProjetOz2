@@ -86,11 +86,12 @@ in
 %%%% Players description %%%%
 
    NbPacman = 2
-   %Pacman = [pacman000random pacman000random]
-   Pacman = [pacman065random pacman065random]
+   Pacman = [ghost065intel ghost018hunter]
    ColorPacman = [yellow red]
    NbGhost = 2
-   Ghost = [ghost065intel ghost065intel]
+   Ghost = [pacman065random pacman018riseleft]
+   % pacman000random ghost000random pacman065random ghost065intel pacman018riseleft ghost018hunter pacman092intel ghost092random
+   % pacman063other ghost063other
    ColorGhost = [green white]% orange white]
 
 %%%% Thinking parameters (only in simultaneous) %%%%
