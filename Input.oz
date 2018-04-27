@@ -86,7 +86,8 @@ in
 %%%% Players description %%%%
 
    NbPacman = 2
-   Pacman = [pacman000random pacman000random]
+  % Pacman = [pacman000random pacmanTeam65]
+   Pacman = [pacmanTeam65 pacmanTeam65]
    ColorPacman = [yellow red]
    NbGhost = 1
    Ghost = [ghostTeam65]
